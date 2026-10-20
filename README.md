@@ -22,46 +22,73 @@ Je kan je bestaande Excel-puntenboek importeren: elk tabblad wordt een klas met 
   - Voor je importeert, kan je per tabblad de klas, het vak, de namen van de evaluaties en de maxima nakijken en aanpassen.
   - Importeer je een tabblad opnieuw, dan wordt het puntenboek aangevuld (of desgewenst vervangen). Leerlingen worden op naam herkend.
 - **Exporteren naar Excel**: één tabblad per klas en vak, met een werkende percentageformule. Dat bestand kan je ook opnieuw importeren.
-- **Back-up**: volledige back-up als .json downloaden en terugzetten.
+- **Back-up**: volledige back-up als .json downloaden en terugzetten. Een back-up bevat leerlinggegevens: bewaar ze veilig.
+- **Account**: aanmelden, wachtwoord wijzigen of herstellen via e-mail, en afmelden.
 - **Ongedaan maken**: via de melding onderaan, of Ctrl+Z buiten een invulvak.
 
-## Waar staan de gegevens?
+## Beveiliging
 
-Standaard bewaart de app alles **in de browser** van het toestel dat je gebruikt (localStorage). Er gaat dan niets naar een server.
-Wil je dezelfde gegevens op school en thuis gebruiken, schakel dan de **online synchronisatie met Supabase** in (zie verder). Maak in elk geval regelmatig een back-up via **Gegevens**.
+De app is enkel bruikbaar na aanmelden. De gegevens staan in een eigen Supabase-database en zijn op meerdere niveaus afgeschermd.
 
-> Het gaat om punten van minderjarige leerlingen: zet de GitHub-repository op *Private* en deel de link van de site niet. De site vraagt zoekmachines om niet te indexeren.
+1. **Geen registratie.** Je maakt je account zelf aan in Supabase en zet registreren daar uit. De app heeft geen knop om een account te maken.
+2. **Row Level Security.** De database geeft een aangemelde gebruiker enkel zijn eigen gegevens.
+3. **Toegangslijst.** Daarbovenop moet je e-mailadres in de tabel `klasbeheer_beheerders` staan. Een account dat daar niet in staat, krijgt geen enkele rij te zien en wordt meteen afgemeld. Zelfs als registreren per ongeluk aan zou staan, kan niemand anders dus aan de gegevens.
+4. **Geen rechten voor niet-aangemelde bezoekers.** De publieke *anon key* in de website geeft zonder aanmelding geen toegang tot de tabellen.
+5. **Gedeelde computer.** Standaard bewaart de browser niets blijvends: bij het sluiten van de browser, bij afmelden of na 30 minuten zonder activiteit worden de sessie en de lokale kopie gewist.
+   - Enkel met *Aangemeld blijven op dit toestel* (voor je eigen computer) blijft een kopie in de browser staan, tot je afmeldt.
+6. **Website.** Strikte beveiligingsheaders (Content-Security-Policy, geen inbedding in andere sites, geen indexering door zoekmachines) en enkel HTTPS.
 
-## Online zetten met Vercel
+De code op GitHub bevat geen leerlinggegevens en geen geheimen. De anon key staat enkel in Vercel en is bovendien bedoeld om publiek te zijn.
 
-1. Ga naar [vercel.com](https://vercel.com) en meld je aan met GitHub.
-2. Kies **Add New… → Project** en importeer de repository `klasbeheer`.
-3. Laat de instellingen zoals ze zijn. Het framework staat op *Other*, en de build gebeurt via `vercel.json` (`npm run build`, map `dist`).
-4. Klik op **Deploy**. Na ongeveer een minuut krijg je een adres zoals `klasbeheer-xxx.vercel.app`.
+## Installatie (eenmalig)
 
-Elke nieuwe commit op `main` wordt automatisch opnieuw gepubliceerd.
+### 1. Supabase-project
 
-## Online synchronisatie met Supabase (optioneel, gratis)
+1. Maak een gratis account op [supabase.com](https://supabase.com) en daarna een **New project**.
+   - Kies een EU-regio, bv. *Frankfurt (eu-central-1)*.
+   - Kies een sterk databasewachtwoord en bewaar het.
+2. Open **SQL Editor → New query**, plak de volledige inhoud van [`supabase/schema.sql`](supabase/schema.sql) en klik op **Run**.
+3. Voer in een nieuwe query deze regel uit, met jouw e-mailadres:
+   ```sql
+   insert into public.klasbeheer_beheerders (email) values ('jouw.adres@voorbeeld.be');
+   ```
+4. Ga naar **Authentication → Users → Add user → Create new user**.
+   - Vul hetzelfde e-mailadres en een sterk wachtwoord in (minstens 10 tekens).
+   - Vink **Auto Confirm User** aan.
+5. Ga naar **Authentication → Sign In / Providers** en zet **Allow new users to sign up** uit. Klik op **Save**.
+6. Ga naar **Authentication → URL Configuration**.
+   - Zet de **Site URL** op het adres van je Vercel-site, bv. `https://klasbeheer-xxx.vercel.app`.
+   - Voeg datzelfde adres toe bij **Redirect URLs**.
+   - Dit is nodig voor de link bij *Wachtwoord vergeten*.
+7. Ga naar **Project Settings → API** (of **Data API**) en kopieer de **Project URL** en de **anon public** key. Gebruik nooit de *service_role* key in de website.
 
-Hiermee log je in met e-mail en wachtwoord, en worden je gegevens online bewaard en tussen toestellen gesynchroniseerd.
+### 2. Vercel
 
-1. Maak een gratis account op [supabase.com](https://supabase.com) en daarna een **New project**. Kies als regio een EU-regio, bv. *Frankfurt* of *Ireland*.
-2. Open **SQL Editor → New query**, plak de inhoud van [`supabase/schema.sql`](supabase/schema.sql) en klik op **Run**. Dat maakt de tabel aan. Ze is beveiligd met Row Level Security: elke gebruiker ziet enkel zijn eigen gegevens.
-3. Ga naar **Project Settings → API** en kopieer de **Project URL** en de **anon public key**.
-4. Kies één van deze twee manieren:
-   - **In Vercel** (aangeraden): ga naar je project → **Settings → Environment Variables** en voeg `SUPABASE_URL` en `SUPABASE_ANON_KEY` toe. Kies daarna **Deployments → … → Redeploy**.
-   - **In de app**: ga naar **Gegevens → Online synchroniseren** en vul ze daar in. Dat geldt dan enkel voor die browser.
-5. Ga in de app naar **Gegevens**, kies **Account aanmaken** en bevestig je e-mailadres. Meld je daarna aan.
-6. Zet in Supabase bij **Authentication → Sign In / Providers** de optie *Allow new users to sign up* uit zodra je account bestaat. Zo kan niemand anders een account maken.
+Heb je nog geen Vercel-project, ga dan naar [vercel.com](https://vercel.com), meld je aan met GitHub, kies **Add New → Project**, importeer `klasbeheer` en klik op **Deploy**. De build-instellingen staan al in `vercel.json`.
 
-Bij de eerste aanmelding worden je lokale gegevens online gezet. Op een tweede toestel krijg je na het aanmelden automatisch dezelfde gegevens.
+1. Ga naar je project in Vercel → **Settings → Environment Variables** en voeg twee variabelen toe:
+   - `SUPABASE_URL`: de Project URL
+   - `SUPABASE_ANON_KEY`: de anon public key
+2. Ga naar **Deployments**, klik op de drie puntjes bij de bovenste deployment en kies **Redeploy**.
+3. Optioneel, maar aangeraden: zet bij **Settings → Deployment Protection** *Vercel Authentication* aan voor *Preview Deployments*. Zo zijn testversies enkel voor jou zichtbaar.
+
+Open daarna de site en meld je aan. Had je eerder al gegevens geïmporteerd in de versie zonder aanmelding, dan worden die bij je eerste aanmelding in deze browser automatisch online bewaard en daarna uit de browser gewist.
+
+## Werken op meerdere toestellen
+
+Elke wijziging wordt na ongeveer een seconde online bewaard. Op een ander toestel meld je je gewoon aan.
 Wijzig je op twee toestellen tegelijk, dan wint de recentste versie. De andere versie blijft als reservekopie beschikbaar onder **Gegevens**.
+
+## Iemand de toegang ontnemen of een account verwijderen
+
+- **Toegang ontnemen:** `delete from public.klasbeheer_beheerders where email = '...';`
+- **Account en gegevens verwijderen:** Authentication → Users → het account → *Delete user*. De gegevens worden dan mee verwijderd.
 
 ## Lokaal ontwikkelen
 
 ```bash
 npm install
-npm run dev     # http://localhost:5173
+SUPABASE_URL=... SUPABASE_ANON_KEY=... npm run dev     # http://localhost:5173
 npm run build   # productiebuild in ./dist
 npm test        # test de Excel-import en -export
 npm test -- pad/naar/Puntenboek.xlsx   # test met je eigen bestand
@@ -79,7 +106,7 @@ src/
   lib/xlsx.ts         .xlsx lezen en schrijven
   lib/importer.ts     herkenning van puntenboeken in een Excel-bestand
   lib/exporter.ts     export naar Excel
-  lib/sync.ts         optionele synchronisatie met Supabase
+  lib/sync.ts         aanmelden, toegangscontrole en synchronisatie met Supabase
   pages/              schermen (overzicht, evaluaties, klas, puntenboek, leerling, import, gegevens)
-supabase/schema.sql   tabel + beveiliging voor de synchronisatie
+supabase/schema.sql   tabellen, toegangslijst en Row Level Security
 ```

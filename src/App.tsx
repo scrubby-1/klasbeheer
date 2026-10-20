@@ -6,14 +6,25 @@ import { ClassPage, NewClassDialog } from './pages/ClassPage.tsx';
 import { GradebookPage } from './pages/GradebookPage.tsx';
 import { StudentPage } from './pages/StudentPage.tsx';
 import { ImportPage } from './pages/ImportPage.tsx';
-import { DataPage, useSync } from './pages/DataPage.tsx';
+import { DataPage, useAuth } from './pages/DataPage.tsx';
+import { LoadingPage, LoginPage, NewPasswordPage, NotConfiguredPage } from './pages/LoginPage.tsx';
+import { signOut } from './lib/sync.ts';
 import { activeStudents, sortClasses } from './lib/calc.ts';
 import { canUndo, undo } from './lib/store.ts';
 
 export function App() {
+  const auth = useAuth();
+  if (auth.phase === 'niet-ingesteld') return <NotConfiguredPage />;
+  if (auth.phase === 'herstel') return <NewPasswordPage />;
+  if (auth.phase === 'afgemeld') return <LoginPage auth={auth} />;
+  if (auth.phase === 'laden') return <LoadingPage />;
+  return <Shell />;
+}
+
+function Shell() {
   const route = useRoute();
   const data = useData();
-  const sync = useSync();
+  const sync = useAuth();
   const [menu, setMenu] = useState(false);
   const [newClass, setNewClass] = useState(false);
 
@@ -113,9 +124,11 @@ export function App() {
         </nav>
         <div className="sidebar-foot">
           <a href="#/gegevens" style={{ color: 'inherit', textDecoration: 'none' }}>
-            <span className={`sync-dot ${sync.status === 'ok' && sync.email ? 'on' : sync.status === 'fout' ? 'err' : ''}`} />
-            {sync.email ? (sync.status === 'fout' ? 'Synchroniseren mislukt' : 'Online bewaard') : 'Enkel in deze browser'}
+            <span className={`sync-dot ${sync.status === 'ok' ? 'on' : sync.status === 'fout' ? 'err' : ''}`} />
+            {sync.status === 'fout' ? 'Opslaan mislukt' : sync.status === 'bezig' ? 'Opslaan…' : 'Online bewaard'}
           </a>
+          <span style={{ opacity: 0.75, overflow: 'hidden', textOverflow: 'ellipsis' }}>{sync.email}</span>
+          <button className="linkish" style={{ color: 'inherit' }} onClick={() => signOut()}>Afmelden</button>
         </div>
       </aside>
       <main className="main">{content}</main>

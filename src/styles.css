@@ -276,6 +276,18 @@ tr.archived td { opacity: 0.5; }
 }
 .toast button { background: none; border: 0; color: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
 
+/* ---------- aanmelden ---------- */
+.login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; background: var(--board); }
+.login-card {
+  width: min(420px, 100%); background: var(--surface); border-radius: 14px; box-shadow: var(--shadow);
+  padding: 28px 28px 24px; display: flex; flex-direction: column; gap: 16px;
+}
+.login-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.login-brand .brand-mark { background: var(--board-soft); }
+.login-brand .brand-name { color: var(--ink); }
+.linkish { background: none; border: 0; padding: 0; color: var(--board); text-decoration: underline; cursor: pointer; align-self: flex-start; font-size: 14px; }
+code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+
 /* ---------- import ---------- */
 .dropzone {
   border: 2px dashed var(--line-2); border-radius: var(--radius); padding: 36px 20px; text-align: center;

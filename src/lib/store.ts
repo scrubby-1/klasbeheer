@@ -2,6 +2,26 @@ import type { AppData, Evaluation, Gradebook, SchoolClass, Score, Student } from
 
 const KEY = 'klasbeheer:data:v1';
 
+/**
+ * Waar de lokale kopie (cache) van de gegevens bewaard wordt.
+ * - 'local': blijft op dit toestel (enkel bij "aangemeld blijven" op je eigen toestel)
+ * - 'session': verdwijnt bij het sluiten van de browser (gedeelde computer)
+ * - 'none': niets bewaren (niet aangemeld)
+ * De gegevens worden pas geladen na het aanmelden, zie sync.ts.
+ */
+export type Persistence = 'local' | 'session' | 'none';
+let persistence: Persistence = 'none';
+
+function storage(): Storage | null {
+  try {
+    if (persistence === 'local') return localStorage;
+    if (persistence === 'session') return sessionStorage;
+  } catch {
+    /* geen opslag beschikbaar */
+  }
+  return null;
+}
+
 export function uid(): string {
   try {
     return crypto.randomUUID();
@@ -21,30 +41,56 @@ export function isValidData(d: unknown): d is AppData {
   return !!x && typeof x === 'object' && Array.isArray(x.classes) && Array.isArray(x.gradebooks);
 }
 
-function load(): AppData {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) {
-      const d = JSON.parse(raw);
-      if (isValidData(d)) return d;
-    }
-  } catch {
-    /* geen opslag beschikbaar */
-  }
-  return emptyData();
-}
-
-let data: AppData = typeof localStorage === 'undefined' ? emptyData() : load();
+let data: AppData = emptyData();
 const listeners = new Set<() => void>();
 const changeListeners = new Set<(d: AppData) => void>();
 const history: AppData[] = [];
 
 function persist() {
   try {
-    localStorage.setItem(KEY, JSON.stringify(data));
+    storage()?.setItem(KEY, JSON.stringify(data));
   } catch {
     /* ignore */
   }
+}
+
+/** Kies waar de cache bewaard wordt en laad wat daar al staat. */
+export function openLocalCache(p: Persistence) {
+  persistence = p;
+  try {
+    // nooit een kopie op beide plaatsen
+    if (p !== 'local') localStorage.removeItem(KEY);
+    if (p !== 'session') sessionStorage.removeItem(KEY);
+  } catch {
+    /* ignore */
+  }
+  let loaded: AppData = emptyData();
+  try {
+    const raw = storage()?.getItem(KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      if (isValidData(d)) loaded = d;
+    }
+  } catch {
+    /* ignore */
+  }
+  data = loaded;
+  history.length = 0;
+  listeners.forEach((l) => l());
+}
+
+/** Wist alle gegevens uit het geheugen en uit de browser (bij afmelden). */
+export function clearLocal() {
+  try {
+    localStorage.removeItem(KEY);
+    sessionStorage.removeItem(KEY);
+  } catch {
+    /* ignore */
+  }
+  persistence = 'none';
+  data = emptyData();
+  history.length = 0;
+  listeners.forEach((l) => l());
 }
 
 export function getData(): AppData {

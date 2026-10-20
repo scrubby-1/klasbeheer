@@ -2,19 +2,16 @@ import { useRef, useState, useSyncExternalStore } from 'react';
 import { Confirm, Icon, download, toast, useData } from '../components/ui.tsx';
 import { exportWorkbook } from '../lib/exporter.ts';
 import { emptyData, isValidData, replaceAll, undo } from '../lib/store.ts';
-import {
-  getConfig, getConflictBackup, getSyncState, saveConfig, signIn, signOut, signUp, subscribeSync, syncNow,
-} from '../lib/sync.ts';
+import { getAuthState, getConflictBackup, setNewPassword, signOut, subscribeAuth, syncNow } from '../lib/sync.ts';
 
-export function useSync() {
-  return useSyncExternalStore(subscribeSync, getSyncState, getSyncState);
+export function useAuth() {
+  return useSyncExternalStore(subscribeAuth, getAuthState, getAuthState);
 }
 
 const stamp = () => new Date().toISOString().slice(0, 10);
 
 export function DataPage() {
   const data = useData();
-  const sync = useSync();
   const fileRef = useRef<HTMLInputElement>(null);
   const [restore, setRestore] = useState<unknown>(null);
   const [wipe, setWipe] = useState(false);
@@ -70,7 +67,7 @@ export function DataPage() {
         </div>
       </section>
 
-      <SyncPanel />
+      <AccountPanel />
 
       {conflict && (
         <section className="panel">
@@ -92,7 +89,7 @@ export function DataPage() {
       <section className="panel">
         <div className="panel-head"><h2>Alles wissen</h2></div>
         <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <p className="muted">Verwijdert alle klassen, leerlingen en punten uit deze browser{sync.email ? ' en uit je online opslag' : ''}. Maak eerst een back-up.</p>
+          <p className="muted">Verwijdert alle klassen, leerlingen en punten, ook online. Maak eerst een back-up.</p>
           <div><button className="btn danger" onClick={() => setWipe(true)}>Alle gegevens wissen</button></div>
         </div>
       </section>
@@ -127,102 +124,62 @@ export function DataPage() {
   );
 }
 
-function SyncPanel() {
-  const sync = useSync();
-  const cfg = getConfig();
-  const [email, setEmail] = useState('');
+function AccountPanel() {
+  const auth = useAuth();
   const [pw, setPw] = useState('');
-  const [msg, setMsg] = useState('');
+  const [pw2, setPw2] = useState('');
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [url, setUrl] = useState(cfg && !cfg.fromBuild ? cfg.url : '');
-  const [key, setKey] = useState(cfg && !cfg.fromBuild ? cfg.anonKey : '');
-
-  const act = async (fn: () => Promise<unknown>) => {
-    setBusy(true);
-    setMsg('');
-    try {
-      await fn();
-    } catch (e) {
-      setMsg(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
-  };
 
   return (
     <section className="panel">
       <div className="panel-head">
-        <h2>Online synchroniseren</h2>
+        <h2>Account</h2>
         <span className="small muted">
-          <span className={`sync-dot ${sync.status === 'ok' ? 'on' : sync.status === 'fout' ? 'err' : ''}`} />
-          {sync.status === 'uit' && 'Niet ingesteld: gegevens staan enkel in deze browser'}
-          {sync.status === 'afgemeld' && 'Niet aangemeld'}
-          {sync.status === 'bezig' && 'Bezig met synchroniseren…'}
-          {sync.status === 'ok' && `Gesynchroniseerd${sync.lastSync ? ` om ${new Date(sync.lastSync).toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' })}` : ''}`}
-          {sync.status === 'fout' && 'Synchroniseren mislukt'}
+          <span className={`sync-dot ${auth.status === 'ok' ? 'on' : auth.status === 'fout' ? 'err' : ''}`} />
+          {auth.status === 'bezig' && 'Bezig met opslaan…'}
+          {auth.status === 'ok' && `Online bewaard${auth.lastSync ? ` om ${new Date(auth.lastSync).toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' })}` : ''}`}
+          {auth.status === 'fout' && 'Opslaan mislukt'}
         </span>
       </div>
       <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {!sync.configured && (
-          <>
-            <p className="muted">
-              Zonder synchronisatie bewaart de app alles in deze browser op dit toestel. Wil je dezelfde gegevens op school en thuis,
-              koppel dan een gratis Supabase-project (zie README in de GitHub-repository). Vul hieronder de Project URL en de
-              publieke anon key in, of zet ze als SUPABASE_URL en SUPABASE_ANON_KEY in Vercel.
-            </p>
-            <div className="row">
-              <label className="field"><span>Project URL</span><input className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://xxxx.supabase.co" /></label>
-              <label className="field"><span>Anon key</span><input className="input" value={key} onChange={(e) => setKey(e.target.value)} /></label>
-              <button className="btn" disabled={!/^https:\/\/.+/.test(url) || key.length < 20} onClick={() => saveConfig(url, key)}>Koppelen</button>
-            </div>
-          </>
-        )}
-
-        {sync.configured && !sync.email && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              act(() => signIn(email, pw));
-            }}
-            style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
-          >
-            <p className="muted">Meld je aan om je gegevens online te bewaren en op al je toestellen te gebruiken.</p>
-            <div className="row">
-              <label className="field"><span>E-mailadres</span><input className="input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} /></label>
-              <label className="field"><span>Wachtwoord</span><input className="input" type="password" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} /></label>
-            </div>
-            <div className="actions">
-              <button className="btn primary" disabled={busy || !email || !pw}>Aanmelden</button>
-              <button
-                type="button"
-                className="btn"
-                disabled={busy || !email || pw.length < 6}
-                onClick={() =>
-                  act(async () => {
-                    const r = await signUp(email, pw);
-                    setMsg(r === 'bevestigen' ? 'Account aangemaakt. Bevestig je e-mailadres via de mail en meld je daarna aan.' : '');
-                  })
-                }
-              >
-                Account aanmaken
-              </button>
-              {!sync.fromBuild && (
-                <button type="button" className="btn ghost" onClick={() => saveConfig('', null)}>Koppeling verwijderen</button>
-              )}
-            </div>
-          </form>
-        )}
-
-        {sync.email && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <p>Aangemeld als <strong>{sync.email}</strong>. Elke wijziging wordt na enkele seconden online bewaard.</p>
-            <div className="actions">
-              <button className="btn" disabled={sync.status === 'bezig'} onClick={() => syncNow()}>Nu synchroniseren</button>
-              <button className="btn ghost" onClick={() => signOut()}>Afmelden</button>
-            </div>
+        <p>
+          Aangemeld als <strong>{auth.email}</strong>.{' '}
+          {auth.remember
+            ? 'Je blijft aangemeld op dit toestel; de gegevens worden ook in deze browser bewaard.'
+            : 'Bij het sluiten van de browser of na 30 minuten zonder activiteit word je afgemeld en worden de gegevens uit deze browser gewist.'}
+        </p>
+        {auth.error && <div className="note bad">{auth.error}</div>}
+        <div className="actions">
+          <button className="btn" disabled={auth.status === 'bezig'} onClick={() => syncNow()}>Nu opslaan</button>
+          <button className="btn" onClick={() => signOut()}>Afmelden</button>
+        </div>
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setBusy(true);
+            setMsg(null);
+            try {
+              await setNewPassword(pw);
+              setPw('');
+              setPw2('');
+              setMsg({ ok: true, text: 'Je wachtwoord is gewijzigd.' });
+            } catch (err) {
+              setMsg({ ok: false, text: err instanceof Error ? err.message : String(err) });
+            } finally {
+              setBusy(false);
+            }
+          }}
+          style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--line)', paddingTop: 14 }}
+        >
+          <h3>Wachtwoord wijzigen</h3>
+          <div className="row">
+            <label className="field"><span>Nieuw wachtwoord (min. 10 tekens)</span><input className="input" type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} /></label>
+            <label className="field"><span>Herhaal</span><input className="input" type="password" autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} /></label>
+            <button className="btn" disabled={busy || pw.length < 10 || pw !== pw2}>Wachtwoord wijzigen</button>
           </div>
-        )}
-        {(msg || sync.error) && <div className={`note ${sync.error && !msg ? 'bad' : ''}`}>{msg || sync.error}</div>}
+          {msg && <div className={`note ${msg.ok ? '' : 'bad'}`}>{msg.text}</div>}
+        </form>
       </div>
     </section>
   );
