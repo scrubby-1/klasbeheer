@@ -5,6 +5,7 @@ import {
   addClass, addGradebook, addStudents, deleteClass, deleteStudent, undo, updateClass, updateStudent,
 } from '../lib/store.ts';
 import type { SchoolClass, Student } from '../lib/types.ts';
+import { ClassTabs } from './SeatingPage.tsx';
 
 export function NewClassDialog({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('');
@@ -101,6 +102,7 @@ export function ClassPage({ id }: { id: string }) {
           <button className="btn ghost danger" onClick={() => setDel(true)}>Verwijderen</button>
         </div>
       </div>
+      <ClassTabs cls={cls} active="klas" />
 
       <section className="panel">
         <div className="panel-head">

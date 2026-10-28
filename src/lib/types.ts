@@ -15,6 +15,22 @@ export interface SchoolClass {
   titularis?: string;
   students: Student[];
   createdAt: string;
+  /** Vaste plaatsen in het lokaal (optioneel; wordt aangemaakt bij het eerste openen van het klasplan). */
+  seating?: SeatingPlan;
+}
+
+export type SeatingMode = 'apart' | 'duo';
+
+export interface SeatingPlan {
+  /** apart = één leerling per bank, duo = twee leerlingen per bank */
+  mode: SeatingMode;
+  /** aantal banken naast elkaar in één rij */
+  desksPerRow: number;
+  /** minimum aantal rijen (er komen automatisch rijen bij als de klas groeit) */
+  rows: number;
+  /** plaats "rij-bank-zitplaats" (bv. "0-2-1") -> leerling-id */
+  seats: Record<string, string>;
+  updatedAt?: string;
 }
 
 export interface Evaluation {

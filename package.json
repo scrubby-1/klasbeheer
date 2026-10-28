@@ -7,7 +7,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "dev": "node scripts/build.mjs --serve",
-    "test": "node --experimental-strip-types tests/import.test.ts"
+    "test": "node --experimental-strip-types --no-warnings tests/seating.test.ts && node --experimental-strip-types --no-warnings tests/import.test.ts"
   },
   "dependencies": {
     "jszip": "3.10.1",

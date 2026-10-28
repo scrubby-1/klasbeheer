@@ -5,6 +5,7 @@ import { EvaluationsPage } from './pages/EvaluationsPage.tsx';
 import { ClassPage, NewClassDialog } from './pages/ClassPage.tsx';
 import { GradebookPage } from './pages/GradebookPage.tsx';
 import { StudentPage } from './pages/StudentPage.tsx';
+import { SeatingPage } from './pages/SeatingPage.tsx';
 import { ImportPage } from './pages/ImportPage.tsx';
 import { DataPage, useAuth } from './pages/DataPage.tsx';
 import { LoadingPage, LoginPage, NewPasswordPage, NotConfiguredPage } from './pages/LoginPage.tsx';
@@ -53,7 +54,7 @@ function Shell() {
       content = <EvaluationsPage />;
       break;
     case 'klas':
-      content = <ClassPage id={a} />;
+      content = b === 'plan' ? <SeatingPage key={a} id={a} /> : <ClassPage id={a} />;
       break;
     case 'puntenboek':
       content = <GradebookPage key={a} id={a} focusEval={b} />;
@@ -106,8 +107,9 @@ function Shell() {
                   <span>{c.name}</span>
                   <span className="count">{activeStudents(c).length}</span>
                 </a>
-                {currentClass === c.id && gbs.length > 0 && (
+                {currentClass === c.id && (
                   <div className="sub">
+                    <a href={`#/klas/${c.id}/plan`} className={isActive(`klas/${c.id}/plan`)}>Klasplan</a>
                     {gbs.map((g) => (
                       <a key={g.id} href={`#/puntenboek/${g.id}`} className={page === 'puntenboek' && a === g.id ? 'active' : ''}>
                         {g.subject}

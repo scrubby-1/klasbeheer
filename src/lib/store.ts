@@ -1,4 +1,5 @@
-import type { AppData, Evaluation, Gradebook, SchoolClass, Score, Student } from './types.ts';
+import type { AppData, Evaluation, Gradebook, SchoolClass, Score, SeatingPlan, Student } from './types.ts';
+import { normalizePlan } from './seating.ts';
 
 const KEY = 'klasbeheer:data:v1';
 
@@ -118,6 +119,12 @@ function emit(local: boolean) {
 export function update(mutator: (d: AppData) => void, opts: { undoable?: boolean } = {}) {
   const next: AppData = structuredClone(data);
   mutator(next);
+  // Klasplannen volgen de leerlingenlijst: nieuwe leerlingen krijgen een plaats, vertrokken leerlingen maken er een vrij.
+  for (const c of next.classes) {
+    if (!c.seating) continue;
+    const r = normalizePlan(c.seating, c);
+    if (r.changed) c.seating = r.plan;
+  }
   next.updatedAt = now();
   if (opts.undoable !== false) {
     history.push(data);
@@ -257,6 +264,16 @@ export function moveEvaluation(gbId: string, evId: string, dir: -1 | 1) {
     if (i < 0 || j < 0 || j >= g.evaluations.length) return;
     [g.evaluations[i], g.evaluations[j]] = [g.evaluations[j], g.evaluations[i]];
   });
+}
+
+/** Klasplan opslaan (null = klasplan verwijderen). */
+export function setSeating(classId: string, plan: SeatingPlan | null, opts: { undoable?: boolean } = {}) {
+  update((d) => {
+    const c = d.classes.find((x) => x.id === classId);
+    if (!c) return;
+    if (plan) c.seating = { ...plan, updatedAt: now() };
+    else delete c.seating;
+  }, opts);
 }
 
 export function setScores(gbId: string, entries: { evId: string; studentId: string; score: Score }[]) {
