@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { cancelRecovery, requestPasswordReset, setNewPassword, signIn, type AuthState } from '../lib/sync.ts';
+import { cancelRecovery, requestPasswordReset, setNewPassword, signIn, startDemo, type AuthState } from '../lib/sync.ts';
 
 function Shell({ children }: { children: ReactNode }) {
   return (
@@ -100,6 +100,12 @@ export function LoginPage({ auth }: { auth: AuthState }) {
       </button>
       {mode === 'login' && (
         <p className="small faint">Zonder &lsquo;aangemeld blijven&rsquo; word je afgemeld wanneer je de browser sluit of na 30 minuten zonder activiteit.</p>
+      )}
+      {mode === 'login' && (
+        <div className="demo-entry">
+          <p className="small muted">Eens rondkijken? Open de demoversie met fictieve klassen en leerlingen. Je hebt geen account nodig.</p>
+          <button className="btn" style={{ justifyContent: 'center' }} onClick={() => startDemo(true)}>Demo bekijken</button>
+        </div>
       )}
     </Shell>
   );

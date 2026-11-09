@@ -378,3 +378,11 @@ code { font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-r
   .seat { min-height: 50px; }
   .seat .seat-pct { display: none; }
 }
+
+/* ---------- demo ---------- */
+.demo-banner {
+  max-width: 1240px; margin: 0 auto 18px; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between;
+  background: var(--warn-soft); border: 1px solid var(--warn); border-radius: var(--radius); padding: 10px 14px; font-size: 14px;
+}
+.demo-entry { border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+@media print { .demo-banner { display: none !important; } }

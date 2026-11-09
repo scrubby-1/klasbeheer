@@ -26,6 +26,17 @@ Je kan je bestaande Excel-puntenboek importeren: elk tabblad wordt een klas met 
 - **Account**: aanmelden, wachtwoord wijzigen of herstellen via e-mail, en afmelden.
 - **Ongedaan maken**: via de melding onderaan, of Ctrl+Z buiten een invulvak.
 
+## Demoversie
+
+Wie de app wil uitproberen, heeft geen account nodig. Klik op het aanmeldscherm op **Demo bekijken**, of deel de link `https://<jouw-site>.vercel.app/?demo`.
+
+- De demo bevat drie fictieve klassen (Demo 4A, 5B en 6C) met verzonnen leerlingen, puntenboeken, evaluaties en klasplannen.
+- Alles werkt zoals in de echte versie: punten invullen, evaluaties toevoegen, importeren, exporteren en het klasplan.
+- De demo draait volledig in de browser van de bezoeker. Er wordt **nooit** iets naar Supabase gestuurd of daar opgehaald. Je echte gegevens zijn vanuit de demo dus niet bereikbaar.
+- De gegevens verdwijnen wanneer het tabblad gesloten wordt. Met **Opnieuw beginnen** start je opnieuw met de originele demogegevens.
+
+Wil je toch een echt testaccount, met online opslag? Maak dan in Supabase een extra gebruiker aan en zet die op de toegangslijst. Elke gebruiker ziet enkel zijn eigen gegevens. Meld je daarna aan met dat account en kies **Gegevens → Demogegevens inladen**. Die knop verschijnt enkel bij een leeg account.
+
 ## Beveiliging
 
 De app is enkel bruikbaar na aanmelden. De gegevens staan in een eigen Supabase-database en zijn op meerdere niveaus afgeschermd.

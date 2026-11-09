@@ -9,7 +9,7 @@ import { SeatingPage } from './pages/SeatingPage.tsx';
 import { ImportPage } from './pages/ImportPage.tsx';
 import { DataPage, useAuth } from './pages/DataPage.tsx';
 import { LoadingPage, LoginPage, NewPasswordPage, NotConfiguredPage } from './pages/LoginPage.tsx';
-import { signOut } from './lib/sync.ts';
+import { leaveDemo, resetDemo, signOut } from './lib/sync.ts';
 import { activeStudents, sortClasses } from './lib/calc.ts';
 import { canUndo, undo } from './lib/store.ts';
 
@@ -19,10 +19,10 @@ export function App() {
   if (auth.phase === 'herstel') return <NewPasswordPage />;
   if (auth.phase === 'afgemeld') return <LoginPage auth={auth} />;
   if (auth.phase === 'laden') return <LoadingPage />;
-  return <Shell />;
+  return <Shell demo={auth.phase === 'demo'} />;
 }
 
-function Shell() {
+function Shell({ demo }: { demo: boolean }) {
   const route = useRoute();
   const data = useData();
   const sync = useAuth();
@@ -124,6 +124,12 @@ function Shell() {
             <span>+ Nieuwe klas</span>
           </a>
         </nav>
+        {demo ? (
+        <div className="sidebar-foot">
+          <span><span className="sync-dot" />Demo: niets wordt bewaard</span>
+          <button className="linkish" style={{ color: 'inherit' }} onClick={() => leaveDemo()}>Demo verlaten</button>
+        </div>
+        ) : (
         <div className="sidebar-foot">
           <a href="#/gegevens" style={{ color: 'inherit', textDecoration: 'none' }}>
             <span className={`sync-dot ${sync.status === 'ok' ? 'on' : sync.status === 'fout' ? 'err' : ''}`} />
@@ -132,8 +138,23 @@ function Shell() {
           <span style={{ opacity: 0.75, overflow: 'hidden', textOverflow: 'ellipsis' }}>{sync.email}</span>
           <button className="linkish" style={{ color: 'inherit' }} onClick={() => signOut()}>Afmelden</button>
         </div>
+        )}
       </aside>
-      <main className="main">{content}</main>
+      <main className="main">
+        {demo && (
+          <div className="demo-banner" role="note">
+            <span>
+              <strong>Demoversie</strong> met fictieve klassen en leerlingen. Probeer gerust alles uit: niets wordt online bewaard en
+              alles verdwijnt wanneer je dit tabblad sluit.
+            </span>
+            <span className="actions">
+              <button className="btn small" onClick={() => resetDemo()}>Opnieuw beginnen</button>
+              <button className="btn small ghost" onClick={() => leaveDemo()}>Demo verlaten</button>
+            </span>
+          </div>
+        )}
+        {content}
+      </main>
       {newClass && <NewClassDialog onClose={() => setNewClass(false)} />}
       <ToastHost />
     </div>

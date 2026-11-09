@@ -1,6 +1,7 @@
 import { useRef, useState, useSyncExternalStore } from 'react';
 import { Confirm, Icon, download, toast, useData } from '../components/ui.tsx';
 import { exportWorkbook } from '../lib/exporter.ts';
+import { makeDemoData } from '../lib/demo.ts';
 import { emptyData, isValidData, replaceAll, undo } from '../lib/store.ts';
 import { getAuthState, getConflictBackup, setNewPassword, signOut, subscribeAuth, syncNow } from '../lib/sync.ts';
 
@@ -12,6 +13,7 @@ const stamp = () => new Date().toISOString().slice(0, 10);
 
 export function DataPage() {
   const data = useData();
+  const auth = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const [restore, setRestore] = useState<unknown>(null);
   const [wipe, setWipe] = useState(false);
@@ -67,7 +69,34 @@ export function DataPage() {
         </div>
       </section>
 
-      <AccountPanel />
+      {auth.phase === 'demo' ? (
+        <section className="panel">
+          <div className="panel-head"><h2>Demoversie</h2></div>
+          <div className="panel-body">
+            <p className="muted">
+              In de demo is er geen account en wordt niets online bewaard. In de echte versie meldt elke gebruiker zich aan, worden alle
+              wijzigingen na een seconde online bewaard en kan je op elk toestel verder werken.
+            </p>
+          </div>
+        </section>
+      ) : (
+        <>
+          <AccountPanel />
+          {!data.classes.length && !data.gradebooks.length && (
+            <section className="panel">
+              <div className="panel-head"><h2>Demogegevens</h2></div>
+              <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <p className="muted">Dit account is nog leeg. Laad fictieve klassen, leerlingen en evaluaties in, bijvoorbeeld voor een testaccount.</p>
+                <div>
+                  <button className="btn" onClick={() => { replaceAll({ ...makeDemoData(), updatedAt: new Date().toISOString() }, { local: true }); toast('Demogegevens ingeladen'); }}>
+                    Demogegevens inladen
+                  </button>
+                </div>
+              </div>
+            </section>
+          )}
+        </>
+      )}
 
       {conflict && (
         <section className="panel">

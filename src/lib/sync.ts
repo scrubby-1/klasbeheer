@@ -10,6 +10,7 @@
 //   bewaard en word je na 30 minuten zonder activiteit automatisch afgemeld.
 import type { AppData } from './types.ts';
 import { clearLocal, getData, isValidData, onLocalChange, openLocalCache, replaceAll } from './store.ts';
+import { makeDemoData } from './demo.ts';
 
 declare const __SUPABASE_URL__: string;
 declare const __SUPABASE_ANON_KEY__: string;
@@ -18,6 +19,7 @@ const SESSION_KEY = 'klasbeheer:session';
 const META_KEY = 'klasbeheer:sync-meta';
 const CONFLICT_KEY = 'klasbeheer:conflict-backup';
 const IDLE_MINUTES = 30;
+const DEMO_KEY = 'klasbeheer:demo';
 
 interface Config { url: string; anonKey: string }
 interface Session {
@@ -29,7 +31,7 @@ interface Session {
 }
 interface Meta { lastSynced: string | null; dirty: boolean }
 
-export type Phase = 'niet-ingesteld' | 'afgemeld' | 'herstel' | 'laden' | 'klaar';
+export type Phase = 'niet-ingesteld' | 'afgemeld' | 'herstel' | 'laden' | 'klaar' | 'demo';
 export type SyncStatus = 'bezig' | 'ok' | 'fout';
 export interface AuthState {
   phase: Phase;
@@ -209,6 +211,7 @@ async function rest(method: string, query: string, body?: unknown, prefer?: stri
 
 export async function signIn(email: string, password: string, remember: boolean) {
   const json = await authCall('POST', 'token?grant_type=password', { email: email.trim(), password });
+  writeJson(store(false), DEMO_KEY, null);
   clearLocal();
   removeEverywhere(META_KEY);
   removeEverywhere(CONFLICT_KEY);
@@ -397,6 +400,42 @@ export function getConflictBackup(): { savedAt: string; data: AppData } | null {
   return session ? readJson(store(session.remember), CONFLICT_KEY) : null;
 }
 
+/* ---------------- demoversie ---------------- */
+// De demo draait volledig in de browser met fictieve gegevens. Er is geen sessie, dus er wordt
+// nooit iets naar Supabase gestuurd of opgehaald; de gegevens verdwijnen bij het sluiten van het tabblad.
+
+export function startDemo(fresh = true) {
+  if (session) return; // nooit mengen met echte gegevens
+  window.clearTimeout(idleTimer);
+  if (fresh) {
+    clearLocal();
+    openLocalCache('session');
+    replaceAll(makeDemoData());
+  } else openLocalCache('session');
+  writeJson(store(false), DEMO_KEY, true);
+  set({ phase: 'demo', status: 'ok', error: undefined, notice: undefined });
+}
+
+export function resetDemo() {
+  if (state.phase === 'demo') startDemo(true);
+}
+
+export function leaveDemo() {
+  writeJson(store(false), DEMO_KEY, null);
+  clearLocal();
+  history.replaceState(null, '', location.pathname);
+  set({ phase: getConfig() ? 'afgemeld' : 'niet-ingesteld' });
+}
+
+function demoRequested(): boolean {
+  const q = new URLSearchParams(location.search);
+  if (q.has('demo')) {
+    history.replaceState(null, '', location.pathname + location.hash);
+    return true;
+  }
+  return false;
+}
+
 /* ---------------- opstarten ---------------- */
 
 function readRecoveryFromUrl(): boolean {
@@ -452,6 +491,11 @@ export function startAuth() {
     if (state.phase === 'klaar' && document.visibilityState === 'visible') syncNow();
   }, 60_000);
 
+  const wantsDemo = demoRequested();
+  if (!session && (wantsDemo || readJson<boolean>(store(false), DEMO_KEY))) {
+    startDemo(wantsDemo || !readJson<boolean>(store(false), DEMO_KEY));
+    return;
+  }
   if (!getConfig()) {
     set({ phase: 'niet-ingesteld' });
     return;
